@@ -1,42 +1,56 @@
--- main.lua
-io.stdout:setvbuf("no") -- Enable live console debugging
-
--- Add src to package path for cleaner requires
+-- main.lua (UPDATED)
+io.stdout:setvbuf("no")
 package.path = package.path .. ";src/?.lua;src/?/init.lua"
 
-local Engine = require("core.Engine")
 local Renderer = require("visualizer.Renderer")
-local FourBar = require("kinematics.FourBar")
+local Camera = require("visualizer.Camera")
 local ProceduralGen = require("generator.ProceduralGen")
+local Exporter = require("utils.Exporter")
+local GeneticOptimizer = require("optimization.GeneticOptimizer")
 
 local currentMechanism
 
 function love.load()
-    love.window.setTitle("MechGenPro: Procedural Kinematics Analyzer By Nabil Khondaker")
     love.graphics.setBackgroundColor(0.1, 0.12, 0.15)
-    
-    -- Generate a random valid Crank-Rocker four-bar linkage
     currentMechanism = ProceduralGen.generateGrashof("crank_rocker")
-    currentMechanism:setSpeed(2.5) -- rad/s
 end
 
 function love.update(dt)
-    if currentMechanism then
-        currentMechanism:update(dt)
-    end
+    if currentMechanism then currentMechanism:update(dt) end
 end
 
 function love.draw()
+    Camera.attach()
     Renderer.drawGrid()
     if currentMechanism then
         Renderer.drawMechanism(currentMechanism)
-        Renderer.drawHUD(currentMechanism)
     end
+    Camera.detach()
+    
+    -- HUD stays outside camera so it doesn't move/zoom
+    if currentMechanism then Renderer.drawHUD(currentMechanism) end
 end
 
 function love.keypressed(key)
     if key == "space" then
-        -- Regenerate on spacebar
         currentMechanism = ProceduralGen.generateGrashof("crank_rocker")
+    elseif key == "o" then
+        -- Run the genetic algorithm for 50 generations to find an optimal mechanism
+        print("Running optimization...")
+        currentMechanism = GeneticOptimizer.evolve(20, 50, "transmission")
+        print("Optimization complete!")
+    elseif key == "e" then
+        -- Export data
+        Exporter.exportTraceToCSV(currentMechanism, "mech_data.csv")
     end
+end
+
+function love.mousemoved(x, y, dx, dy, istouch)
+    if love.mouse.isDown(2) then -- Right click to pan
+        Camera.move(dx, dy)
+    end
+end
+
+function love.wheelmoved(x, y)
+    Camera.setZoom(y * 0.1) -- Scroll to zoom
 end
