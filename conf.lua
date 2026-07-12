@@ -1,4 +1,3 @@
--- conf.lua
 function love.conf(t)
     t.window.title = "MechGenPro - Kinematics Engine"
     t.window.width = 1280
